@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation Template for RateLimitingService
+
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+
+Resources:
+  RateLimitingInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro  # Change to your desired instance type
+      KeyName: !Ref KeyName
+      SecurityGroups:
+        - !Ref RateLimitingSecurityGroup
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -xe
+          yum update -y
+          # Install Java and dependencies
+          amazon-linux-extras install -y java-openjdk11
+
+          # Download and run your Spring Boot application
+          wget -O /tmp/RateLimitingService.jar <URL_TO_YOUR_JAR>
+          java -jar /tmp/RateLimitingService.jar
+
+  RateLimitingSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0  # Open to the world for demonstration purposes; restrict as needed
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0  # Open SSH access for demonstration purposes; restrict as needed
+
+Outputs:
+  RateLimitingServiceInstanceIP:
+    Description: Public IP address of the RateLimitingService EC2 instance
+    Value: !GetAtt RateLimitingInstance.PublicIp
